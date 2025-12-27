@@ -60,3 +60,19 @@ class Train():
     
     def relu2deriv(self,output):
         return [min(1,i) for i in output]
+    
+    def valid(self,batchs,labels):
+        self.batchs = batchs
+        self.labels = labels
+        for i in range(len(self.batchs)):
+            for layer in range(len(self.model)):
+                if layer == 0:
+                    self.summary(self.batchs[i],self.model[layer])
+                    self.relu(self.model[layer])
+                else:
+                    if layer != len(self.model)-1:
+                        self.summary(self.model[layer-1].output,self.model[layer])
+                        self.relu(self.model[layer])
+                    else:
+                        self.summary(self.model[layer-1].output,self.model[layer])
+            print(f"Predict: {self.model[-1].output} Label: {self.labels[i]}")
