@@ -5,14 +5,13 @@ from trainer import Train
 from dataload import dataset_mnist
 
 x,y = dataset_mnist()
-inputs = np.array(x[:1000])
-labels = np.array(y[:1000])
-lr = 0.001
-epochs = 10
+inputs = np.array(x[:500])
+labels = np.array(y[:500])
+lr = 0.01
+epochs = 1
 
 start = time.time()
 layer1 = Layer(784,1)
-#layer2 = Layer(350,1)
 model = np.array([layer1])
 trainer = Train(model)
 trainer.Fit(inputs,labels,lr,epochs)

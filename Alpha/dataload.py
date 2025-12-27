@@ -18,4 +18,4 @@ def dataset_cifar10():
     print(image.shape)
     print((dict.get(b'data'))[0].shape)
 
-dataset_cifar10()
+# dataset_cifar10()

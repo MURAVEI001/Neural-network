@@ -1,15 +1,15 @@
 import numpy as np
 
-class Train:
+class Train():
     def __init__(self,model):
         self.model = model
-        self.reverse_model = np.flip(model)
+        self.reverse_model = np.flip(self.model)
 
     def Fit(self,batchs,labels,lr,epochs):
         self.batchs = batchs
         self.labels = labels
         self.lr = lr
-        for epoch in range(epochs+1):
+        for epoch in range(epochs):
             self.all_loss = 0
             for i in range(len(self.batchs)):
                 for layer in range(len(self.model)):
@@ -26,10 +26,6 @@ class Train:
                 self.grad(self.labels[i])
                 self.w_update(self.batchs[i])
                 self.spicker(epoch,self.labels[i])
-            # self.log(self.labels,self.batchs,self.all_loss,epoch)
-
-    # no activate 1000batch 0.001 100ep layer2 327sec loss2.33
-    # activate 1000batch 0.001 100ep layer2  340sec lossnan
 
     def summary(self,input,layer):
             layer.output = layer.w_summ(input)
