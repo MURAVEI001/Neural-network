@@ -66,3 +66,4 @@ import math
 # z2 = np.dot(w2,i) # 1,2 * 2, 
 # print(z2,z2.shape)
 
+print(np.random.randint(2,size=30))

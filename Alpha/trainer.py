@@ -5,13 +5,16 @@ class Train():
         self.model = model
         self.reverse_model = np.flip(self.model)
 
-    def Fit(self,batchs,labels,lr,epochs):
+    def Fit(self,batchs,labels,lr,epochs,drop=False):
+        self.drop = drop
         self.batchs = batchs
         self.labels = labels
         self.lr = lr
         for epoch in range(epochs):
             self.all_loss = 0
             for i in range(len(self.batchs)):
+                dropout_l_1 = np.random.randint(2,size=self.model[0].w.shape)
+                input()
                 for layer in range(len(self.model)):
                     if layer == 0:
                         self.summary(self.batchs[i],self.model[layer])
