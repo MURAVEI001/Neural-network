@@ -23,6 +23,11 @@ class Tensor:
         out = Tensor(self.data + other.data,requires_grad=self.requires_grad or other.requires_grad, _op="add", _parents=(self,other))
         return out
     
+    def __sub__(self,other):
+        other = self.to_tensor(other)
+        out = Tensor(self.data - other.data,requires_grad=self.requires_grad or other.requires_grad, _op="sub", _parents=(self,other))
+        return out
+
     def __mul__(self,other):
         other = self.to_tensor(other)
         out = Tensor(self.data * other.data,requires_grad=self.requires_grad or other.requires_grad, _op="mul", _parents=(self,other))
@@ -31,6 +36,10 @@ class Tensor:
     def __matmul__(self,other):
         other = self.to_tensor(other)
         out = Tensor(self.data @ other.data,requires_grad=self.requires_grad or other.requires_grad, _op="matmul", _parents=(self,other))
+        return out
+
+    def __pow__(self,exponenta):
+        out = Tensor(self.data ** exponenta,requires_grad=self.requires_grad, _op="pow", _parents=(self,))
         return out
 
 class Layer:
@@ -64,6 +73,10 @@ class Seq:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
+def MSE(predict, target):
+    return (predict-target)**2
+
+
 images = decode_idx3_ubyte(r"src/datasets/train-images.idx3-ubyte")
 labels = decode_idx1_ubyte(r"src/datasets/train-labels.idx1-ubyte")
 
@@ -71,4 +84,6 @@ model = Seq(
     Layer(784,1),
     )
 
-print(model(x[0]).data)
+predict = model(images[0])
+loss = MSE(predict,labels[0])
+print(loss.data,predict.data)
