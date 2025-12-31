@@ -1,1 +1,1 @@
-Модель глубокого обучения ALPHA
+The ALPHA Deep Learning Model
