@@ -1,5 +1,4 @@
 venv/
 __pycache__/
 Alpha/__pycache__/
-mnist_train.csv
-cifar-10-batches-py/
+src/__pycache__/

@@ -1,4 +1,5 @@
 import numpy as np
+from dataloader import decode_idx3_ubyte, decode_idx1_ubyte
 
 class Tensor:
     def __init__(self,data,requires_grad=False,_op=None,_parents=None):
@@ -40,25 +41,34 @@ class Layer:
         self.w = Tensor(np.random.normal(0, np.sqrt(2.0 / self.dim_in),(self.dim_in, self.dim_out)))   
 
     def forward(self,x):
-        out = x @ self.w
-        return out
+        self.x = Tensor(x)
+        if self.x.data.shape:
+            out = self.x @ self.w
+            return out
+        else:
+            out = self.x * self.w
+            return out
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
 
 class Seq:
-    def __init__(self, *layer):
-        self.layers = layer
+    def __init__(self, *layers):
+        self.layers = layers
     
-    def forward(self,x):
-        return x 
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
-def dataset_mnist():
-    import pandas as pd
-    df = pd.read_csv('mnist_train.csv',header=None)
-    y = df.iloc[:,0].values
-    x = (df.iloc[:,1:].values).astype("float32") /255
-    return x, y
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
 
-x, y = dataset_mnist()
+images = decode_idx3_ubyte(r"src/datasets/train-images.idx3-ubyte")
+labels = decode_idx1_ubyte(r"src/datasets/train-labels.idx1-ubyte")
+
 model = Seq(
-    Layer(784,2),
-    Layer(2,1)
+    Layer(784,1),
     )
+
+print(model(x[0]).data)
