@@ -26,6 +26,10 @@ class Tensor:
         self.grad += grad
 
     @property
+    def zeros_grad(self):
+        self.grad = np.zeros_like(self.grad)
+
+    @property
     def tensor(self):
         return f" Data: {self.data} \n  Grad: {self.grad} \n Shape: {self.data.shape} \n Op: {self._op} \n Parents: {self._parents} \n Calc_grad: {self.calc_grad} \n Grad_calls: {self.fl_back}"
 
@@ -37,20 +41,18 @@ def add(a,b):
             # dc/da = c.grad * 1
             grad = c.grad * 1
             a.accumulate_grad(grad)
-            a.fl_back += 1 
         
         if b.calc_grad:
             # dc/db = c.grad * 1
             grad = c.grad * 1
             b.accumulate_grad(grad)
-            b.fl_back += 1
     
     c._backward = _backward
     return c
 
 def sub(a,b):
-    b.data = b.data * -1
-    return add(a,b)
+    c = Tensor(b.data*-1, calc_grad=b.calc_grad, _op="neg", _parents=(b,))
+    return add(a,c)
 
 def pow(a,exp):
     c = Tensor(a.data ** exp, calc_grad=a.calc_grad, _op="pow", _parents=(a,))
@@ -60,7 +62,6 @@ def pow(a,exp):
             # dc/da = c.grad * (exp*a.data**(exp-1))
             grad = c.grad * (exp * a.data**(exp-1))
             a.accumulate_grad(grad)
-            a.fl_back += 1 
     
     c._backward = _backward
     return c
@@ -73,13 +74,24 @@ def mul(a,b):
             # dc/da = c.grad * b
             grad = c.grad * b.data
             a.accumulate_grad(grad)
-            a.fl_back += 1 
         
         if b.calc_grad:
             # dc/db = c.grad * a
             grad = c.grad * a.data
             b.accumulate_grad(grad)
-            b.fl_back += 1
+    
+    c._backward = _backward
+    return c
+
+def mean(a):
+    c = Tensor(a.data.mean(axis=None, keepdims=False), calc_grad=a.calc_grad, _op="mean", _parents=(a,))
+    
+    def _backward():
+        if a.calc_grad:
+            # dc/da = c.grad * 1/n  
+            # n - размер batch
+            grad = c.grad * 1/c.data.size
+            a.accumulate_grad(grad)
     
     c._backward = _backward
     return c
@@ -87,20 +99,19 @@ def mul(a,b):
 def MSE(predict,target):
     p1 = sub(predict,target)
     p2 = pow(p1,2)
-    loss = Tensor(p2.data,calc_grad=predict.calc_grad or target.calc_grad, _op="MSE", _parents=(predict,target))
+    p3 = mean(p2)
+    loss = Tensor(p3.data, calc_grad=predict.calc_grad or target.calc_grad, _op="MSE", _parents=(predict,target))
 
     def _backward():
         if predict.calc_grad:
             # dc/da = c.grad * 2*(predict-target)
             grad = loss.grad * 2*(predict.data - target.data)
             predict.accumulate_grad(grad)
-            predict.fl_back += 1 
         
         if target.calc_grad:
             # dc/db = c.grad * 2*(predict - targer)
             grad = loss.grad * 2*(predict.data - target.data)
             target.accumulate_grad(grad)
-            target.fl_back += 1
     
     loss._backward = _backward
     return loss
@@ -115,13 +126,11 @@ def matmul(a,b):
             # dc/da = c.grad @ b = (m,p) @ (n,p).T 
             grad = c.grad @ T(b).data
             a.accumulate_grad(grad)
-            a.fl_back += 1
 
         if b.calc_grad:
             # dc/db = c.grad @ a = (m,n).T @ (m,p)
             grad = T(a).data @ c.grad
             b.accumulate_grad(grad)
-            b.fl_back += 1
     
     c._backward = _backward
     return c
@@ -135,7 +144,6 @@ def T(a):
             # dc/da = c.grad.T
             grad = c.grad.T
             a.accumulate_grad(grad)
-            a.fl_back += 1 
     
     c._backward = _backward
     return c
@@ -149,7 +157,8 @@ def backward(self):
             visited.add(self)
             for v in self._parents:
                 build_topo_map(v)
-            topo_map.append(self)
+            if self.calc_grad:
+                topo_map.append(self)
                         
     build_topo_map(self)
 
@@ -157,35 +166,63 @@ def backward(self):
         if self == node:
             self.grad = np.ones_like(self.data)
             node._backward()
+            node.fl_back += 1
         else:
             node._backward()
-
-def build_graph(G,self):
-    G.add_node(f"{self.data.shape} {self._op} {self.fl_back}")
-    for p in self._parents:
-        G.add_node(f"{p.data.shape} {p._op} {p.fl_back}")
-        G.add_edge(f"{p.data.shape} {p._op} {p.fl_back}",f"{self.data.shape} {self._op} {self.fl_back}")
-        G = build_graph(G,p)
-    return G
-
-images = decode_idx3_ubyte(r"src/datasets/train-images.idx3-ubyte")
-labels = decode_idx1_ubyte(r"src/datasets/train-labels.idx1-ubyte")
-
-np.random.seed(1)
-x1 = Tensor([images[0]])
-w1 = Tensor(np.random.normal(0, np.sqrt(2.0 / 784),(784, 10)),calc_grad=True)
-x2 = matmul(x1,w1)
-w2 = Tensor(np.random.normal(0, np.sqrt(2.0 / 10),(10, 1)),calc_grad=True) 
-predict = matmul(x2,w2)
-target = Tensor(labels[0])
-loss = MSE(predict,target)
-backward(loss)
-
-G = nx.DiGraph()
-G = build_graph(G,loss)
-nx.draw(G, pos = nx.spring_layout(G),
+            node.fl_back += 1
+    
+    return topo_map
+def view_graph():
+    
+    def build_graph(G,self):
+        G.add_node(f"{self.data.shape} {self._op} {self.fl_back}")
+        for p in self._parents:
+            G.add_node(f"{p.data.shape} {p._op} {p.fl_back}")
+            G.add_edge(f"{p.data.shape} {p._op} {p.fl_back}",f"{self.data.shape} {self._op} {self.fl_back}")
+            G = build_graph(G,p)
+        return G
+    
+    G = nx.DiGraph()
+    G = build_graph(G,loss)
+    nx.draw(G, pos = nx.spring_layout(G),
         with_labels=True,
         arrows=True,
         arrowsize=20,
-        arrowstyle='->') 
-plt.show()
+        arrowstyle='->')
+    plt.show()
+
+def update_weight(parameters, alpha=0.001):
+    for self in parameters:
+        if self.calc_grad:
+            self.data = self.data - alpha * self.grad
+        self.zeros_grad
+
+def zeros_grad(topo_map):
+    for self in topo_map:
+        self.zeros_grad
+
+def normilize(images):
+    normalize_images = np.empty_like(images)
+    for i in range(len(images)):
+        normalize_image = np.array(images[i]/255).astype(np.float32)
+        normalize_images[i] = normalize_image
+    return normalize_images
+
+images = decode_idx3_ubyte(r"src/datasets/train-images.idx3-ubyte")
+images = normilize(images)
+labels = decode_idx1_ubyte(r"src/datasets/train-labels.idx1-ubyte")
+parameters = []
+np.random.seed(1)
+x1 = Tensor([images[0]])
+target = Tensor(labels[0])
+w1 = Tensor(np.random.normal(0, np.sqrt(2.0 / 784),(784, 1)),calc_grad=True)
+parameters.append(w1)
+epoch = 30
+for i in range(epoch):
+    predict = matmul(x1,w1)
+    loss = MSE(predict,target)
+    print(f"Epoch: {i+1} Loss: {loss.data}, \n Predict: {predict.data} \n Target: {target.data} \n ")
+    topo_map = backward(loss)
+    update_weight(parameters)
+    zeros_grad(topo_map)
+view_graph()
