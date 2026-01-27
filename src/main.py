@@ -71,7 +71,7 @@ class Tensor:
         return out
 
     def __sub__(self,other):
-        out = Tensor(other.data*-1, calc_grad=other.calc_grad, _op="neg", _parents=(other,))
+        out = Tensor(other.data*-1, calc_grad=other.calc_grad, _op="sub", _parents=(other,))
         return self+out
 
     def __pow__(self,exp):
@@ -153,7 +153,7 @@ def MSE(predict,target):
     loss._backward = _backward
     return loss
 
-def backward(self):
+def SGD(self,lr,parameters):
     visited = set()
     topo_map = []
 
@@ -164,6 +164,14 @@ def backward(self):
                 build_topo_map(v)
             if self.calc_grad:
                 topo_map.append(self)
+
+    def update_weight(parameters, lr):
+        for param in parameters:
+            param.data = param.data - lr * param.grad
+
+    def zero_grad(topo_map):
+        for i in topo_map:
+            i.zeros_grad
                     
     build_topo_map(self)
 
@@ -171,37 +179,87 @@ def backward(self):
             node._backward()
             node.fl_back += 1
     
-    return topo_map
+    update_weight(parameters,lr)
+    zero_grad(topo_map)
 
-def update_weight(parameters, alpha=0.001):
-    for self in parameters:
-        if self.calc_grad:
-            self.data = self.data - alpha * self.grad
-        self.zeros_grad
+class Model:
+    def __init__(self):
+        self.layers = []
+        self.learn_param = []
 
-def zeros_grad(topo_map):
-    for self in topo_map:
-        self.zeros_grad
+    def build(self,*layers):
+        for i in range(len(layers)):
+            self.learn_param.append(layers[i].w)
+            self.layers.append(layers[i])
+
+            if i == 0 and i == len(layers)-1:
+                layers[i].first_layer = True
+                layers[i].last_layer = True
+            elif i == 0:
+                layers[i].next_layer = layers[i+1]
+                layers[i].first_layer = True
+            elif i == len(layers)-1:
+                layers[i].prev_layer = layers[i-1]
+                layers[i].last_layer = True
+            else:
+                layers[i].prev_layer = layers[i-1]
+                layers[i].next_layer = layers[i+1]
+
+        #\view_graph(self.layers,graph="layer")
+
+    def train(self,images,labels,epoch,lr=0.001):
+        self.images = images
+        self.labels = labels
+        self.epoch = epoch
+        self.lr = lr
+
+        for i in range(epoch):
+            self.predict = self.layers[0].forward(Tensor([images]))
+            loss = MSE(self.predict,Tensor(self.labels))
+            SGD(loss,lr,self.learn_param)
+            print(loss.data, self.predict.data)
+        #view_graph(loss,graph="param")
+
+class Layer:
+    def __init__(self):
+        self.prev_layer = None
+        self.next_layer = None
+        self.first_layer = False
+        self.last_layer = False
+
+class Dense(Layer):
+    def __init__(self,in_dim,out_dim):
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.w = Tensor(np.random.normal(0, np.sqrt(2.0 / self.in_dim),(self.in_dim, self.out_dim)),calc_grad=True)
+
+    @property
+    def previos(self):
+        print(type(self), self.in_dim,self.out_dim)
+        if self.prev_layer != None:
+            self.prev_layer.previos
+
+    @property
+    def next(self):
+        print(type(self), self.in_dim,self.out_dim)
+        if self.next_layer != None:
+            self.next_layer.next
+
+    def forward(self,x):
+        y = x @ self.w
+        if self.last_layer == False:
+            return self.next_layer.forward(y)
+        else:
+            return y
 
 images = decode_idx3_ubyte(r"src/datasets/train-images.idx3-ubyte",normilize=True)
 labels = decode_idx1_ubyte(r"src/datasets/train-labels.idx1-ubyte")
 
-parameters = []
-
 start = time.time()
-x1 = Tensor([images[0]])
-target = Tensor(labels[0])
-w1 = Tensor(np.random.normal(0, np.sqrt(2.0 / 784),(784, 1)),calc_grad=True)
-parameters.append(w1)
-epoch = 30
-for i in range(epoch):
-    predict = x1@w1
-    loss = MSE(predict,target)
-    print(f"Epoch: {i+1} Loss: {loss.data}, \n Predict: {predict.data} \n Target: {target.data} \n ")
-    topo_map = backward(loss)
-    update_weight(parameters)
-    zeros_grad(topo_map)
+model = Model()
+model.build(
+    Dense(784,1)
+)
+model.train(images[0],labels[0],30)
 print(f"{time.time() - start:.10f}") 
-view_graph(loss)
-# 0.0009
-# 0.009
