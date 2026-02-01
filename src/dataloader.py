@@ -3,7 +3,7 @@ import struct
 import sys
 
 # decode idx3-ubyte files
-def decode_idx3_ubyte(fileDir,normilize=False):
+def getMnistImage(fileDir,normilize=False):
     
     bin_data = open(fileDir, 'rb').read()
 
@@ -32,7 +32,7 @@ def decode_idx3_ubyte(fileDir,normilize=False):
     return images
 
 # decode idx1-ubyte files
-def decode_idx1_ubyte(fileDir):
+def getMnistLabel(fileDir):
 
     bin_data = open(fileDir, 'rb').read()
     
