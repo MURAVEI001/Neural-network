@@ -1,7 +1,7 @@
 import numpy as np
-from tensor import Tensor
+from src import Tensor
 
-def MSE(predict,target):
+def MSE_loss(predict,target):
     # MSE - (predict - target)**2 / n
     loss = Tensor(((predict-target)**2).mean().data, calc_grad=predict.calc_grad or target.calc_grad, _op="MSE", _parents=(predict,target))
     loss.grad = np.ones_like(loss.data)

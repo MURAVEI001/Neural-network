@@ -1,11 +1,7 @@
 import numpy as np
 import time
-from dataloader import getMnistImage,getMnistLabel
-from tensor import Tensor
-from layers import Layer, Dense
-from function_loss import MSE
-from optimizer import SGD
-from build_graph import view_graph
+
+from src import Tensor,Layer,Dense,view_graph,getMnistImage,getMnistLabel,SGD,MSE_loss
 
 np.random.seed(1)
 
@@ -42,7 +38,7 @@ class Model:
 
         for i in range(epoch):
             self.predict = self.layers[0].forward(Tensor([images]))
-            loss = MSE(self.predict,Tensor(self.labels))
+            loss = MSE_loss(self.predict,Tensor(self.labels))
             SGD(loss,lr,self.learn_param)
             print(loss.data, self.predict.data)
         #view_graph(loss,graph="param")

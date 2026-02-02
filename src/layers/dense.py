@@ -1,12 +1,6 @@
 import numpy as np
-from tensor import Tensor
-
-class Layer:
-    def __init__(self):
-        self.prev_layer = None
-        self.next_layer = None
-        self.first_layer = False
-        self.last_layer = False
+from src.tensor import Tensor
+from src.layers.layer import Layer
 
 class Dense(Layer):
     def __init__(self,in_dim,out_dim):
