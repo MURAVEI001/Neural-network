@@ -48,4 +48,3 @@ def getMnistLabel(fileDir):
 
 def getMNIST(fileDir=fr"src/datasets/unzip_datasets/mnist"):
     dataDict = {}
-    
