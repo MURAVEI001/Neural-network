@@ -45,3 +45,7 @@ def getMnistLabel(fileDir):
         labels[i] = struct.unpack_from(fmt_image, bin_data, offset)[0]
         offset += struct.calcsize(fmt_image)
     return labels
+
+def getMNIST(fileDir=fr"src/datasets/unzip_datasets/mnist"):
+    dataDict = {}
+    
