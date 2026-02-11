@@ -2,7 +2,7 @@ __version__ = '0.0.4'
 
 from .tensor import Tensor
 from .function_loss.MSE import MSE_loss
-from .dataloader.dataload import getMnistImage,getMnistLabel
+from .dataloader.dataload import getMnist
 from .layers.layer import Layer
 from .layers.dense import Dense
 from .logger.build_graph import view_graph

@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-from src import Tensor,Layer,Dense,view_graph,getMnistImage,getMnistLabel,SGD,MSE_loss
+from src import Tensor,Layer,Dense,view_graph,getMnist,SGD,MSE_loss
 
 np.random.seed(1)
 
@@ -43,13 +43,12 @@ class Model:
             print(loss.data, self.predict.data)
         #view_graph(loss,graph="param")
 
-images = getMnistImage(r"src/datasets/train-images.idx3-ubyte",normilize=True)
-labels = getMnistLabel(r"src/datasets/train-labels.idx1-ubyte")
+data = getMnist(1)
 
 start = time.time()
 model = Model()
 model.build(
     Dense(784,1)
 )
-model.train(images[0],labels[0],30)
+model.train(data.values()[0],data.values,30)
 print(f"{time.time() - start:.10f}") 
