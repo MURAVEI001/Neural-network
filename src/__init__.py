@@ -1,6 +1,6 @@
 __version__ = '0.0.4'
 
-from .tensor import Tensor
+from .tn.tensor import Tensor
 from .function_loss.MSE import MSE_loss
 from .dataloader.dataload import getMnist
 from .layers.layer import Layer

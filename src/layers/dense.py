@@ -1,5 +1,5 @@
 import numpy as np
-from src.tensor import Tensor
+from src.tn.tensor import Tensor
 from src.layers.layer import Layer
 
 class Dense(Layer):
