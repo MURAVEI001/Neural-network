@@ -1,54 +1,83 @@
 import numpy as np
-import time
+import matplotlib.pyplot as plt
 
-from src import Tensor,Layer,Dense,view_graph,getMnist,SGD,MSE_loss
+step_time = 1.0 # {ms}
+all_time = 100000.0 # {ms}
 
-np.random.seed(1)
+time_line = np.zeros_like(np.arange(0,all_time,step_time),dtype=np.float32)
+time_line[100:80000:20] = 1.67
 
-class Model:
-    def __init__(self):
-        self.layers = []
-        self.learn_param = []
+def LIF1(V,V_thr,I,tau,step_time):
+    V = np.exp(-step_time/tau) * V + I
+    spike = 0
+    if V >= V_thr:
+        spike = 1
+        return spike, V - V_thr
+    return spike, V
 
-    def build(self,*layers):
-        for i in range(len(layers)):
-            self.learn_param.append(layers[i].w)
-            self.layers.append(layers[i])
+def LIF2(V,V_thr,I,tau,step_time,w):
+    V = np.exp(-step_time/tau) * V + w * I
+    spike = 0
+    if V >= V_thr:
+        spike = 1
+        return spike, V - V_thr
+    return spike, V
 
-            if i == 0 and i == len(layers)-1:
-                layers[i].first_layer = True
-                layers[i].last_layer = True
-            elif i == 0:
-                layers[i].next_layer = layers[i+1]
-                layers[i].first_layer = True
-            elif i == len(layers)-1:
-                layers[i].prev_layer = layers[i-1]
-                layers[i].last_layer = True
-            else:
-                layers[i].prev_layer = layers[i-1]
-                layers[i].next_layer = layers[i+1]
+def STDP(tau,w,t1,t2):
+    a = 0.1
+    if t2 != None and t1 != None:
+        delta_t = t2-t1
+        if delta_t >= 0:
+            w += a * np.exp(-delta_t/tau)
+        elif delta_t <0:
+            w -= a * np.exp(delta_t/tau)
+    return w
 
-        #\view_graph(self.layers,graph="layer")
+w = 1
+V1_list = []
+V2_list = []
+W_list = []
+spike1_list = []
+spike2_list = []
+V1 = 0.0
+V2 = 0.0
+V1_list.append(V1)
+V2_list.append(V2)
+W_list.append(w)
+t1 = None
+t2 = None
 
-    def train(self,images,labels,epoch,lr=0.001):
-        self.images = images
-        self.labels = labels
-        self.epoch = epoch
-        self.lr = lr
+for t, i in enumerate(time_line):
+    spike1, V1 = LIF1(V=V1,V_thr=1.0,I=i,tau=10.0,step_time=step_time)
+    spike1_list.append(spike1)
+    if spike1:
+        t1 = t
+    spike2, V2 = LIF2(V=V2,V_thr=1.0,I=spike1,tau=10.0,step_time=step_time,w=w)
+    spike2_list.append(spike2)
+    if spike2:
+        t2 = t
+    w = STDP(tau=10.0,w=w,t1=t1,t2=t2)
 
-        for i in range(epoch):
-            self.predict = self.layers[0].forward(Tensor([images]))
-            loss = MSE_loss(self.predict,Tensor(self.labels))
-            SGD(loss,lr,self.learn_param)
-            print(loss.data, self.predict.data)
-        #view_graph(loss,graph="param")
+    V1_list.append(V1)
+    V2_list.append(V2)
+    W_list.append(w)
 
-data = getMnist(1)
+fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12,8))
+axes[0,0].plot(time_line)
+axes[0,0].set_title("Time line")
 
-start = time.time()
-model = Model()
-model.build(
-    Dense(784,1)
-)
-model.train(data.values()[0],data.values,30)
-print(f"{time.time() - start:.10f}") 
+axes[0,1].plot(W_list)
+axes[0,1].set_title("Weight")
+
+axes[1,0].plot(V1_list)
+axes[1,0].set_title("V1")
+
+axes[1,1].plot(V2_list)
+axes[1,1].set_title("V2")
+
+axes[2,0].plot(spike1_list)
+axes[2,0].set_title("spike1")
+
+axes[2,1].plot(spike2_list)
+axes[2,1].set_title("spike2")
+plt.show()
