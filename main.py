@@ -2,82 +2,91 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 step_time = 1.0 # {ms}
-all_time = 100000.0 # {ms}
+all_time = 100.0 # {ms}
 
-time_line = np.zeros_like(np.arange(0,all_time,step_time),dtype=np.float32)
-time_line[100:80000:20] = 1.67
+img = np.array([150],dtype=np.float16)/255
+I_max = 2.0
 
-def LIF1(V,V_thr,I,tau,step_time):
-    V = np.exp(-step_time/tau) * V + I
-    spike = 0
-    if V >= V_thr:
-        spike = 1
-        return spike, V - V_thr
-    return spike, V
+time_line = np.tile(I_max*img,len(np.arange(0,all_time,step_time)))
 
-def LIF2(V,V_thr,I,tau,step_time,w):
-    V = np.exp(-step_time/tau) * V + w * I
-    spike = 0
-    if V >= V_thr:
-        spike = 1
-        return spike, V - V_thr
-    return spike, V
+class Neuron():
+    def __init__(self):
+        self.V = 0
+        self.spike = 0
+        self.t_spike = None
+        self.trace = 0
+        self.V_list = []
+        self.Spike_list = []
 
-def STDP(tau,w,t1,t2):
-    a = 0.1
-    if t2 != None and t1 != None:
-        delta_t = t2-t1
-        if delta_t >= 0:
-            w += a * np.exp(-delta_t/tau)
-        elif delta_t <0:
-            w -= a * np.exp(delta_t/tau)
-    return w
+    def LIF(self,I,t):
+        self.V += (-self.V + I)/10.0
+        self.logV
+        self.spike = 0
+        if self.V >= 1.0:
+            self.makeSpike(t)
+            self.V -= 1.0
+            self.trace += 1.0
+        self.logSpike 
 
-w = 1
-V1_list = []
-V2_list = []
-W_list = []
-spike1_list = []
-spike2_list = []
-V1 = 0.0
-V2 = 0.0
-V1_list.append(V1)
-V2_list.append(V2)
-W_list.append(w)
-t1 = None
-t2 = None
+    def makeSpike(self,t):
+        self.spike = 1
+        self.t_spike = t
 
-for t, i in enumerate(time_line):
-    spike1, V1 = LIF1(V=V1,V_thr=1.0,I=i,tau=10.0,step_time=step_time)
-    spike1_list.append(spike1)
-    if spike1:
-        t1 = t
-    spike2, V2 = LIF2(V=V2,V_thr=1.0,I=spike1,tau=10.0,step_time=step_time,w=w)
-    spike2_list.append(spike2)
-    if spike2:
-        t2 = t
-    w = STDP(tau=10.0,w=w,t1=t1,t2=t2)
+    @property
+    def logV(self):
+        self.V_list.append(self.V)
 
-    V1_list.append(V1)
-    V2_list.append(V2)
-    W_list.append(w)
+    @property
+    def logSpike(self):
+        self.Spike_list.append(self.spike)
 
-fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(12,8))
-axes[0,0].plot(time_line)
-axes[0,0].set_title("Time line")
+class Sinapse():
+    def __init__(self,pre_neuron,post_neuron):
+        self.w = 0.5
+        self.pre_neuron = pre_neuron
+        self.post_neuron = post_neuron
+        self.W_list = []
 
-axes[0,1].plot(W_list)
-axes[0,1].set_title("Weight")
+    def STDP(self):
+        if self.post_neuron.t_spike != None and self.pre_neuron.t_spike != None:
+            self.delta_t = self.post_neuron.t_spike - self.pre_neuron.t_spike
+            if self.delta_t > 0:
+                self.w += ((1.0 - self.w) * 0.1) * np.exp(-self.delta_t/10.0)
+            else:
+                self.w += ((self.w + 1.0) * 0.1) * np.exp(self.delta_t/10.0)
+        print(self.w)
+        self.logW
+    
+    @property
+    def logW(self):
+        self.W_list.append(self.w)
 
-axes[1,0].plot(V1_list)
-axes[1,0].set_title("V1")
+    def Fit(self):    
+        for t,i in enumerate(time_line):
+            self.pre_neuron.LIF(i,t)
+            self.post_neuron.LIF(i,t)
+            self.STDP()
 
-axes[1,1].plot(V2_list)
-axes[1,1].set_title("V2")
+neuron1 = Neuron()
+neuron2 = Neuron()
+sinapse1_2 = Sinapse(neuron1,neuron2)
 
-axes[2,0].plot(spike1_list)
-axes[2,0].set_title("spike1")
+sinapse1_2.Fit()
 
-axes[2,1].plot(spike2_list)
-axes[2,1].set_title("spike2")
+fig, axes = plt.subplots(nrows=3,ncols=2,figsize=(8,4))
+
+axes[0,0].plot(neuron1.V_list)
+axes[0,0].set_title("V1")
+
+axes[0,1].plot(neuron2.V_list)
+axes[0,1].set_title("V2")
+
+axes[1,0].plot(neuron1.Spike_list)
+axes[1,0].set_title("Spike1")
+
+axes[1,1].plot(neuron2.Spike_list)
+axes[1,1].set_title("Spike2")
+
+axes[2,0].plot(sinapse1_2.W_list)
+axes[2,0].set_title("W")
 plt.show()
