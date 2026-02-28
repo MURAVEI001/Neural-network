@@ -2,35 +2,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 step_time = 1.0 # {ms}
-all_time = 100.0 # {ms}
+all_time = 1000.0 # {ms}
 
-img = np.array([150],dtype=np.float16)/255
-I_max = 2.0
-
-time_line = np.tile(I_max*img,len(np.arange(0,all_time,step_time)))
+time_line = np.zeros_like((np.arange(0,all_time,step_time)))
+time_line[300] = 5.0
 
 class Neuron():
     def __init__(self):
         self.V = 0
         self.spike = 0
-        self.t_spike = None
         self.trace = 0
         self.V_list = []
         self.Spike_list = []
 
-    def LIF(self,I,t):
-        self.V += (-self.V + I)/10.0
+    def LIF(self,I):
+        self.V = self.V - (self.V/10.0) + I
         self.logV
         self.spike = 0
         if self.V >= 1.0:
-            self.makeSpike(t)
+            self.fire
             self.V -= 1.0
             self.trace += 1.0
-        self.logSpike 
+        self.trace = self.trace - self.trace/10.0
+        self.logSpike
 
-    def makeSpike(self,t):
+    @property
+    def fire(self):
         self.spike = 1
-        self.t_spike = t
 
     @property
     def logV(self):
@@ -43,29 +41,37 @@ class Neuron():
 class Sinapse():
     def __init__(self,pre_neuron,post_neuron):
         self.w = 0.5
+        self.lr = 0.5
         self.pre_neuron = pre_neuron
         self.post_neuron = post_neuron
         self.W_list = []
 
-    def STDP(self):
-        if self.post_neuron.t_spike != None and self.pre_neuron.t_spike != None:
-            self.delta_t = self.post_neuron.t_spike - self.pre_neuron.t_spike
-            if self.delta_t > 0:
-                self.w += ((1.0 - self.w) * 0.1) * np.exp(-self.delta_t/10.0)
-            else:
-                self.w += ((self.w + 1.0) * 0.1) * np.exp(self.delta_t/10.0)
-        print(self.w)
+    def STDP(self,I):
+        if self.pre_neuron.spike:
+            self.w = self.w - self.lr * (self.w - 0.0) * self.post_neuron.trace   
+        if self.post_neuron.spike:
+            self.w = self.w + self.lr * (1.0 - self.w) * self.pre_neuron.trace
         self.logW
+        return self.w * I
     
     @property
     def logW(self):
         self.W_list.append(self.w)
 
-    def Fit(self):    
-        for t,i in enumerate(time_line):
-            self.pre_neuron.LIF(i,t)
-            self.post_neuron.LIF(i,t)
-            self.STDP()
+    def predictor(self,y,t):
+        if y:
+            predict = t
+            self.predict_list.append(predict)
+            print(predict)
+
+    def Fit(self):
+        self.predict_list = []
+        for epoch in range(5):    
+            for t,i in enumerate(time_line):
+                self.pre_neuron.LIF(i)
+                i = self.STDP(self.pre_neuron.spike)
+                self.post_neuron.LIF(i)
+                predict = self.predictor(self.post_neuron.spike,t)                
 
 neuron1 = Neuron()
 neuron2 = Neuron()
@@ -89,4 +95,7 @@ axes[1,1].set_title("Spike2")
 
 axes[2,0].plot(sinapse1_2.W_list)
 axes[2,0].set_title("W")
+
+axes[2,1].plot(sinapse1_2.predict_list)
+axes[2,1].set_title("predict")
 plt.show()
