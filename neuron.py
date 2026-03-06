@@ -22,7 +22,7 @@ class Neuron():
         self.v_list.append(self.V)
 
     def STDP(self,N_postList):
-        lr = 1
+        lr = 0.5
         for i, n in enumerate(N_postList):
             if self.spike:
                 self.q = self.W[i]
