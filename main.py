@@ -5,27 +5,22 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # Загружаем все изображения (пример: 100 цифр)
-image_paths = [fr"D:\GitHub\Neural-network\src\datasets\unzip_datasets\mnist\images\image_{i}.jpg" for i in range(10)]  # ваши файлы
-images = []
-for path in image_paths:
-    img = Image.open(path).convert('L')
-    images.append(np.array(img))
-images = np.array(images)  # форма (100, 28, 28)
+image_path = [fr"D:\GitHub\Neural-network\src\datasets\unzip_datasets\mnist\images\image_{i}.jpg" for i in range(10)]
 
 allTime = 256 #ms
 step_time = 1 #ms
 
-timeLines = timing_coder(images)
+timeLines = timing_coder(image_path,allTime,power=1)
 
 l1 = np.array([Neuron(10) for _ in range(784)])
 l2 = np.array([Neuron() for _ in range(10)])
 
 for epoch in range(10):
-    w_to_neuron0 = np.array([n.W[0] for n in l1])  # веса от всех 784 нейронов к выходному нейрону 0
-    w_img = w_to_neuron0.reshape(28, 28)
-    plt.imshow(w_img, cmap='hot')
-    plt.savefig(f'w_{epoch}.png')
     for i in range(len(timeLines)):
+        w_to_neuron0 = np.array([n.W[0] for n in l1])  # веса от всех 784 нейронов к выходному нейрону 0
+        w_img = w_to_neuron0.reshape(28, 28)
+        plt.imshow(w_img, cmap='hot')
+        plt.savefig(f'w_{i}.png')
         timeline_T = timeLines[i].T
         for n in l1:
             n.V = 0
@@ -33,17 +28,14 @@ for epoch in range(10):
         for n in l2:
             n.V = 0
             n.trace = 0
-        k = [0,0,0,0,0,0,0,0,0,0]
         for i in range(allTime):
             tick = np.array(timeline_T[i])
             for j, n in enumerate(l1):
                 n.LIF(tick[j])
             for j, n in enumerate(l2):
                 n.LIF(sum([x.out[j] for x in l1]))
-                k[j] += n.spike
             for j, n in enumerate(l1):
                 n.STDP(l2)
-
 
 # fig, axes = plt.subplots(nrows=3,ncols=4,figsize=(12,12))
 
