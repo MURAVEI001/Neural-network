@@ -1,27 +1,15 @@
-from data_coder import timing_coder
+import data_coder
 from neuron import Node
-import numpy as np
-import matplotlib.pyplot as plt
+from analitycs_utils import plot_all_weights
 
-image_path = [fr"D:\GitHub\Neural-network\src\datasets\unzip_datasets\mnist\images\image_{i}.jpg" for i in range(1)]
+data_dir = r"D:\GitHub\Neural-network\src\datasets\unzip_datasets\mnist"
 
 allTime = 256 #ms
 step_time = 1 #ms
 
-timeLines = timing_coder(image_path,allTime,power=1)
+timeLines, labelsList = data_coder.timing_coder(data_dir,allTime=allTime,count=10,power=1)
 
-node1 = Node(784,10)
-
-def plot_all_weights(W, epoch, save_path='.'):
-    fig, axes = plt.subplots(2, 5, figsize=(15, 6))
-    for i, ax in enumerate(axes.flat):
-        w_to_neuron = np.array(1-W[:,i]).reshape(28, 28)
-        im = ax.imshow(w_to_neuron, cmap='Greys', interpolation='nearest')
-        ax.set_title(i)
-        ax.axis('off')
-    plt.suptitle(f'Epoch {epoch}')
-    plt.tight_layout()
-    plt.savefig(f'{save_path}/weights_epoch_{epoch:03d}.png')
+node1 = Node((784,10))
 
 for epoch in range(200):
     print(epoch)
