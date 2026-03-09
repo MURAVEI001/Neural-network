@@ -14,6 +14,7 @@ def timing_coder(directory,count=1,allTime=256,power=1):
 
     for file in imagesList:
         img_list.append(np.array(Image.open(file)))
+
     images = np.array(img_list)
 
     N, H, W = images.shape
