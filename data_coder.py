@@ -26,13 +26,16 @@ def timing_coder(directory,count=1,allTime=256,power=1):
     for i in range(N):
         for j in range(num_pixels):
             value = images_flat[i, j]
-            pos = (allTime-1)-value
-            timelines[i, pos, j] = power
+            if value < 10:
+                pass
+            else:
+                pos = (allTime-1)-value
+                timelines[i, pos, j] = power
 
     label_list = []
 
     for file in labelsList:
         with open(file, 'r', encoding='utf-8') as f:
             label_list.append(f.read())
-    labels = np.array(label_list)
+    labels = np.array(label_list, dtype=np.int8)
     return timelines, labels

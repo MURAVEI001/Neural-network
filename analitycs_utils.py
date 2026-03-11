@@ -8,7 +8,7 @@ def plot_all_weights(W, epoch, save_path='.', vmin=0, vmax=1, colorbar=True):
     for i, ax in enumerate(axes.flat):
         # Преобразование столбца весов в изображение 28×28
         w_to_neuron = W[:, i].reshape(28, 28)
-        im = ax.imshow(w_to_neuron, cmap='hot', vmin=vmin, vmax=vmax)
+        im = ax.imshow(w_to_neuron, cmap='gray', vmin=vmin, vmax=vmax)
         ax.set_title(i)
         ax.axis('off')
     
