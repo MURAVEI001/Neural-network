@@ -1,7 +1,7 @@
 import numpy as np
 
 class Node():
-    def __init__(self, dim: tuple, lr=0.02,tau_v = 100, tau_trace = 100):
+    def __init__(self, dim: tuple, lr=0.02,tau_v = 15, tau_trace = 100):
         self.layer_pre = Layer(dim[0],tau_v,tau_trace)
         self.layer_post = Layer(dim[1],tau_v,tau_trace)
         self.W = np.random.uniform(0,0.1,(dim[0],dim[1]))
@@ -26,10 +26,10 @@ class Node():
             self.W[idx_pre, :] -= self.W[idx_pre, :] * self.layer_post.Trace
 
     def drop_param(self):
-        self.layer_pre.V[:] = 0
-        self.layer_pre.Trace[:] = 0
-        self.layer_post.V[:] = 0
-        self.layer_post.Trace[:] = 0
+        self.layer_pre.V.fill(0)
+        self.layer_pre.Trace.fill(0)
+        self.layer_post.V.fill(0)
+        self.layer_post.Trace.fill(0)
 
 class Layer():
     def __init__(self,n,tau_v,tau_trace):
@@ -43,7 +43,7 @@ class Layer():
         self.Spike.fill(0)
         self.Trace -= self.Trace/self.tau_trace
         self.V += -self.V/self.tau_v + I
-        self.Spike = self.V >= 1.0
+        self.Spike = self.V >= 1
         mask = self.Spike > 0
-        self.Trace[mask] = 1.0
+        self.Trace[mask] = 1
         self.V[mask] = 0
