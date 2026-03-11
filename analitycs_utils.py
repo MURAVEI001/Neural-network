@@ -1,13 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_all_weights(W, epoch, save_path='.'):
+def plot_all_weights(W, epoch, save_path='.', vmin=0, vmax=1, colorbar=True):
+
     fig, axes = plt.subplots(2, 5, figsize=(15, 6))
+    im = None
     for i, ax in enumerate(axes.flat):
-        w_to_neuron = np.array(1-W[:,i]).reshape(28, 28)
-        im = ax.imshow(w_to_neuron, cmap='Greys', interpolation='nearest')
+        # Преобразование столбца весов в изображение 28×28
+        w_to_neuron = W[:, i].reshape(28, 28)
+        im = ax.imshow(w_to_neuron, cmap='hot', vmin=vmin, vmax=vmax)
         ax.set_title(i)
         ax.axis('off')
+    
+    if colorbar and im is not None:
+        # Общий цветовой бар для всех subplots
+        fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.8, label='Значение веса')
+    
     plt.suptitle(f'Epoch {epoch}')
-    plt.tight_layout()
     plt.savefig(f'{save_path}/weights_epoch_{epoch:03d}.png')

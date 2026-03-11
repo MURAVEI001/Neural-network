@@ -19,14 +19,14 @@ def timing_coder(directory,count=1,allTime=256,power=1):
 
     N, H, W = images.shape
     num_pixels = H * W
-    images_flat = images.reshape(N, num_pixels)
+    images_flat = np.array(images.reshape(N, num_pixels),dtype=np.int32)
     
     timelines = np.zeros((N, allTime, num_pixels), dtype=np.float32)
     
     for i in range(N):
         for j in range(num_pixels):
             value = images_flat[i, j]
-            pos = int(255 - value)
+            pos = (allTime-1)-value
             timelines[i, pos, j] = power
 
     label_list = []
