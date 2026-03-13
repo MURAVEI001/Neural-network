@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 def plot_all_weights(W, epoch, save_path='.', vmin=0, vmax=1, colorbar=True):
 
     fig, axes = plt.subplots(2, 5, figsize=(15, 6))
     im = None
+    W = W.detach().cpu().numpy()
     for i, ax in enumerate(axes.flat):
         # Преобразование столбца весов в изображение 28×28
         w_to_neuron = W[:, i].reshape(28, 28)
