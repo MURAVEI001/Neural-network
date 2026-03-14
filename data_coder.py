@@ -17,7 +17,7 @@ def timing_coder(imagesList,labelsList,allTime,power,device):
     num_pixels = H * W
     images_flat = np.array(images.reshape(N, num_pixels),dtype=np.int32)
     
-    timelines = torch.zeros((N, allTime, num_pixels), dtype=torch.float32,device=device)
+    timelines = torch.zeros((allTime, N, num_pixels), dtype=torch.float32,device=device)
     
     for i in range(N):
         for j in range(num_pixels):
@@ -26,7 +26,7 @@ def timing_coder(imagesList,labelsList,allTime,power,device):
                 pass
             else:
                 pos = (allTime-1)-value
-                timelines[i, pos, j] = power
+                timelines[pos, i, j] = power
 
     label_list = []
 

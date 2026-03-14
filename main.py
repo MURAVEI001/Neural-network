@@ -10,18 +10,14 @@ step_time = 1 #ms
 
 torch.set_grad_enabled(False)
 
-device = torch.device("cpu")
+device = torch.device("cuda")
 
-imagesTrain, labelsTrain, imagesValid, labelsValid = data_coder.getTimeLine(data_dir,Train=10,Valid=10,
+imagesTrain, labelsTrain, imagesValid, labelsValid = data_coder.getTimeLine(data_dir,Train=2,Valid=1,
                                                                             allTime=allTime,power=1,device=device)
 
 node1 = Node((784,10),device=device)
 
-for epoch in range(30):
+for epoch in range(1):
     print(epoch+1)
-    for i, timeline in enumerate(imagesTrain):
-        print(timeline.shape)
-        node1.Fit(timeline,labelsTrain[i])
-for i, timeline in enumerate(imagesValid):
-    node1.Valid(timeline,labelsValid[i])
+    node1.Fit(imagesTrain,labelsTrain)
 au.plot_all_weights(node1.W, 1)

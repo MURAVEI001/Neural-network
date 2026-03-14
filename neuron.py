@@ -2,10 +2,10 @@ import numpy as np
 import torch
 
 class Node():
-    def __init__(self, dim: tuple, lr=0.01, tau_v = 60, tau_trace = 60, A_plus=0.22, A_minus=0.1,Help_k=0.005,device='cpu'):
+    def __init__(self, dim: tuple, lr=0.01, tau_v = 60, tau_trace = 60, A_plus=0.12, A_minus=0.01,Help_k=0.005,device='cpu'):
         self.device = device
-        self.layer_pre = Layer(dim[0],tau_v,tau_trace,device=self.device)
-        self.layer_post = Layer(dim[1],tau_v,tau_trace,device=self.device)
+        self.layer_pre = Layer(dim[0],device=self.device)
+        self.layer_post = Layer(dim[1],device=self.device)
         self.W = torch.empty((dim[0],dim[1]),device=self.device).uniform_(0,0.1)
         self.E = torch.zeros_like(self.W,device=self.device)
         self.lr = lr
@@ -13,38 +13,30 @@ class Node():
         self.A_plus = A_plus
         self.A_minus = A_minus
         self.Help_k = Help_k
+        torch.set_printoptions(threshold=torch.inf)
 
-    def Fit(self,timeline,label):
+    def Fit(self,batch,label):
         self.drop_param()
-        for I in timeline:
-            self.layer_pre.LIF(I)
-            self.layer_post.LIF(self.layer_pre.Spike @ self.W)
-            self.Potention()
-            self.Depression()
-            self.k += self.layer_post.Spike
-        self.R_STDP(label)
-    
-    def Valid(self,timeline,label):
-        self.drop_param()
-        for I in timeline:
-            self.layer_pre.LIF(I)
-            self.layer_post.LIF(self.layer_pre.Spike @ self.W)
-            self.k += self.layer_post.Spike
-        print(f"Predict: {torch.argmax(self.k).item()} || {label} :Label")
+        self.layer_pre.FPT(batch)
+        self.layer_post.FPT(torch.matmul(self.layer_pre.s_prev,self.W))
+        self.STDP()
+        print(self.layer_post.s_prev[:,0])
+        print(self.layer_post.s_prev[:,1])
+        # self.k += self.layer_post.s_prev
+        # self.R_STDP(label)
 
-    def Potention(self):
-        idx_post = torch.where(self.layer_post.Spike)[0]
-        self.E[:, idx_post] += self.A_plus * (1 - self.W[:, idx_post]+self.E[:, idx_post]) * self.layer_pre.Trace[:, torch.newaxis]
+    def STDP(self):
+        # Потенциация: post_spikes[t,b,k] * pre_traces[t,b,j] -> сумма по t,b -> матрица (N_pre, N_post)
+        # Используем einsum: 'tbk,tbj->jk' (j - пре, k - пост)
+        delta_plus = torch.einsum('tbk,tbj->jk', self.layer_post.s_prev, self.layer_pre.trace)  # форма (N_pre, N_post)
 
-    def Depression(self):
-        idx_pre = torch.where(self.layer_pre.Spike)[0]
-        self.E[idx_pre, :] -= self.A_minus *(self.W[idx_pre, :]+self.E[idx_pre, :]) * self.layer_post.Trace
+        # Депрессия: pre_spikes[t,b,j] * post_traces[t,b,k] -> сумма по t,b -> матрица (N_pre, N_post)
+        delta_minus = torch.einsum('tbj,tbk->jk', self.layer_pre.s_prev, self.layer_post.trace)
+
+        # Общее изменение
+        self.W += self.A_plus * delta_plus - self.A_minus * delta_minus
 
     def drop_param(self):
-        self.layer_pre.V.fill_(0)
-        self.layer_pre.Trace.fill_(0)
-        self.layer_post.V.fill_(0)
-        self.layer_post.Trace.fill_(0)
         self.k.fill_(0)
         self.E.fill_(0)
     
@@ -57,17 +49,43 @@ class Node():
             self.W[:,label] += self.Help_k * self.E[:,label]
 
 class Layer():
-    def __init__(self,n,tau_v,tau_trace,device):
-        self.V = torch.zeros(n,device=device)
-        self.Trace = torch.zeros(n,device=device)
-        self.Spike = torch.zeros(n,dtype=torch.float,device=device)
-        self.tau_v = tau_v
-        self.tau_trace = tau_trace
+    def __init__(self,n,device):
+        self.device = device
+        self.tau_trace = 100
+        self.V_th = 1
+        self.tau_v = 100
+        self.K = 3
 
-    def LIF(self,I):
-        self.Trace -= self.Trace/self.tau_trace
-        self.V += -self.V/self.tau_v + I
-        self.Spike = (self.V>=1).detach().clone().to(torch.float)
-        mask = self.Spike > 0
-        self.Trace[mask] = 1
-        self.V[mask] = 0
+    def FPT(self,I):
+        T = I.shape[0]
+        device = self.device
+        batch_shape = I.shape[1:]
+        
+        # Начальный потенциал
+        u0 = torch.zeros(batch_shape, device=device)
+        
+        # Инициализация
+        self.u_prev = torch.zeros(T, *batch_shape, device=device)
+        self.s_prev = torch.zeros(T, *batch_shape, device=device)
+        
+        # Инициализация трасс (экспоненциальное затухание)
+        self.trace = torch.zeros(T, *batch_shape, device=device)
+        
+        for _ in range(self.K):
+            # Сдвиг для учёта предыдущего шага
+            u_prev_shifted = torch.cat([u0.unsqueeze(0), self.u_prev[:-1]], dim=0)
+            s_prev_shifted = torch.cat([torch.zeros_like(u0.unsqueeze(0)), 
+                                       self.s_prev[:-1]], dim=0)
+            
+
+            u_new = (u_prev_shifted - self.V_th * s_prev_shifted)/self.tau_v + I
+
+            # Генерация спайков
+            s_new = (u_new >= self.V_th).float()
+            
+            # Обновление трасс (экспоненциальное затухание + прибавление при спайке)
+            trace_new = self.trace * torch.exp(-torch.ones_like(self.trace) / self.tau_trace)
+            trace_new = trace_new + s_new  # добавляем 1 при спайке
+            
+            # Сохраняем для следующей итерации
+            self.u_prev, self.s_prev, self.trace = u_new, s_new, trace_new
